@@ -1,0 +1,129 @@
+<body style="margin: 0; overflow: hidden">
+<canvas id="c"></canvas>
+<script>
+	canvas = document.getElementById("c");
+	ctx = canvas.getContext("2d");
+	canvas.width = window.innerWidth;
+	canvas.height = window.innerHeight;
+	particles = Array(250);
+	particleNum = 15;
+	for (var i = 0; i < particles.length; i++) {
+		particles[i] = {
+			type: ~~(Math.random()*particleNum),
+			x: Math.random()*canvas.width,
+			y: Math.random()*canvas.height,
+			xvel: 0,
+			yvel: 0,
+		}
+	}
+	particleRules = {};
+	for (var i = 0; i < particleNum; i++) {
+		particleRules[i] = [];
+		for (var j = 0; j < particleNum; j++) {
+		
+			particleRules[i][j] = [Math.random()*80-30, Math.random()*1.5+0.5, Math.random()*2];
+			
+		}
+	}
+	updatesPerSec = 60;
+	setInterval(function(){
+		ctx.fillStyle = "black";
+		ctx.strokeStyle = "white";
+		ctx.lineWidth = 2;
+		ctx.fillRect(0, 0, canvas.width, canvas.height);
+		var buffer = particles;
+		for (var i = 0; i < particles.length; i++) {
+			for (var j = 0; j < particles.length; j++) {
+				if (i==j) j++;
+				if (j >= particles.length) break;
+				var x0 = (buffer[i].x-buffer[j].x);
+				var y0 = (buffer[i].y-buffer[j].y);
+				var d = Math.sqrt(x0**2+y0**2)+0.01;
+				particles[i].xvel += (particleRules[buffer[i].type][buffer[j].type][1]*(1/(1+Math.E**(particleRules[buffer[i].type][buffer[j].type][2]*Math.sign(particleRules[buffer[i].type][buffer[j].type][0])*d-Math.abs(particleRules[buffer[i].type][buffer[j].type][0])))-0.5)*x0)/d**2;
+				particles[i].yvel += (particleRules[buffer[i].type][buffer[j].type][1]*(1/(1+Math.E**(particleRules[buffer[i].type][buffer[j].type][2]*Math.sign(particleRules[buffer[i].type][buffer[j].type][0])*d-Math.abs(particleRules[buffer[i].type][buffer[j].type][0])))-0.5)*y0)/d**2;
+				ctx.beginPath();
+				//ctx.moveTo(particles[i].x, particles[i].y);
+				//ctx.lineTo(particles[i].x/2+buffer[j].x/2, particles[i].y/2+buffer[j].y/2);
+				//ctx.globalAlpha = 25*Math.sqrt((((1/(1+Math.E**(Math.sign(particleRules[buffer[i].type][buffer[j].type][0])*d-Math.abs(particleRules[buffer[i].type][buffer[j].type][0])))-0.5)*x0)/d**2)**2+(((1/(1+Math.E**(Math.sign(particleRules[buffer[i].type][buffer[j].type][0])*d-Math.abs(particleRules[buffer[i].type][buffer[j].type][0])))-0.5)*y0)/d**2)**2)
+				//ctx.strokeStyle = Math.sign(particleRules[buffer[i].type][buffer[j].type][0]) == -1 ? "red" : "green";
+				//ctx.stroke();
+				//ctx.globalAlpha = 1;
+				particles[i].x += particles[i].xvel/1000;
+				particles[i].y += particles[i].yvel/1000;
+				particles[i].xvel /= 1.0001;
+				particles[i].yvel /= 1.0001;
+				if (particles[i].x < 0 || particles[i].x > canvas.width) particles[i].xvel *= -2;
+				if (particles[i].y < 0 || particles[i].y > canvas.height) particles[i].yvel *= -2;
+				particles[i].x = particles[i].x < 0 ? 0 : particles[i].x;
+				particles[i].x = particles[i].x > canvas.width ? canvas.width : particles[i].x;
+				particles[i].y = particles[i].y < 0 ? 0 : particles[i].y;
+				particles[i].y = particles[i].y > canvas.height ? canvas.height : particles[i].y;
+			}
+		}
+		for (var i = 0; i < particles.length; i++) {
+			ctx.fillStyle = ["red","green","yellow","blue","orange","purple","cyan","brown","pink","lime","navy","aqua","auburn","gray","blonde","white","bronze","darkseagreen","deeppink"][particles[i].type];
+			ctx.beginPath();
+			ctx.arc(particles[i].x, particles[i].y, 5, 0, 2*Math.PI);
+			ctx.fill();
+		}
+	}, 1000/updatesPerSec);
+	
+	document.addEventListener("keydown", function(e){
+		if (e.key == " ") {
+			particleRules = {};
+			for (var i = 0; i < particleNum; i++) {
+				particleRules[i] = [];
+				for (var j = 0; j < particleNum; j++) {
+					particleRules[i][j] = [Math.random()*80-30, Math.random()*1.5+0.5, Math.random()*2];
+				}
+			}
+		}
+	});
+	
+	document.addEventListener("keydown", function(e){
+		if (e.key == "r") {
+			for (var i = 0; i < particleNum; i++) {
+				for (var j = 0; j < particleNum; j++) {
+					particleRules[i][j][0] = -particleRules[i][j][0];
+					particleRules[i][j][1] = -particleRules[i][j][1];
+					particleRules[i][j][2] = -particleRules[i][j][2];
+				}
+			}
+		}
+	});
+	
+	document.addEventListener("keydown", function(e){
+		if (e.key == "e") {
+			var buffer = particles;
+			for (var i = 0; i < particles.length; i++) {
+				for (var j = 0; j < particles.length; j++) {
+					if (i==j) j++;
+					if (j >= particles.length) break;
+					var x0 = (buffer[i].x-buffer[j].x);
+					var y0 = (buffer[i].y-buffer[j].y);
+					var d = Math.sqrt(x0**2+y0**2)+0.01;
+					particles[i].xvel += -50*(particleRules[buffer[i].type][buffer[j].type][1]*(1/(1+Math.E**(particleRules[buffer[i].type][buffer[j].type][2]*Math.sign(particleRules[buffer[i].type][buffer[j].type][0])*d-Math.abs(particleRules[buffer[i].type][buffer[j].type][0])))-0.5)*x0)/d**2;
+					particles[i].yvel += -50*(particleRules[buffer[i].type][buffer[j].type][1]*(1/(1+Math.E**(particleRules[buffer[i].type][buffer[j].type][2]*Math.sign(particleRules[buffer[i].type][buffer[j].type][0])*d-Math.abs(particleRules[buffer[i].type][buffer[j].type][0])))-0.5)*y0)/d**2;
+					ctx.beginPath();
+					//ctx.moveTo(particles[i].x, particles[i].y);
+					//ctx.lineTo(particles[i].x/2+buffer[j].x/2, particles[i].y/2+buffer[j].y/2);
+					//ctx.globalAlpha = 25*Math.sqrt((((1/(1+Math.E**(Math.sign(particleRules[buffer[i].type][buffer[j].type][0])*d-Math.abs(particleRules[buffer[i].type][buffer[j].type][0])))-0.5)*x0)/d**2)**2+(((1/(1+Math.E**(Math.sign(particleRules[buffer[i].type][buffer[j].type][0])*d-Math.abs(particleRules[buffer[i].type][buffer[j].type][0])))-0.5)*y0)/d**2)**2)
+					//ctx.strokeStyle = Math.sign(particleRules[buffer[i].type][buffer[j].type][0]) == -1 ? "red" : "green";
+					//ctx.stroke();
+					//ctx.globalAlpha = 1;
+					particles[i].x += particles[i].xvel/1000;
+					particles[i].y += particles[i].yvel/1000;
+					particles[i].xvel /= 1.0001;
+					particles[i].yvel /= 1.0001;
+					if (particles[i].x < 0 || particles[i].x > canvas.width) particles[i].xvel *= -2;
+					if (particles[i].y < 0 || particles[i].y > canvas.height) particles[i].yvel *= -2;
+					particles[i].x = particles[i].x < 0 ? 0 : particles[i].x;
+					particles[i].x = particles[i].x > canvas.width ? canvas.width : particles[i].x;
+					particles[i].y = particles[i].y < 0 ? 0 : particles[i].y;
+					particles[i].y = particles[i].y > canvas.height ? canvas.height : particles[i].y;
+				}
+			}
+		}
+	});
+</script>
+</body>

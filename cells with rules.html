@@ -1,0 +1,69 @@
+<canvas id="c"></canvas>
+<script>
+	canvas = document.getElementById("c");
+	ctx = canvas.getContext("2d");
+	canvas.width = 1920;
+	canvas.height = 1080;
+	var runSim = function(rules, time, display, exp) {
+		var cells = JSON.parse(JSON.stringify(Array(108).fill(Array(192).fill(0))));
+		var dirs = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 0], [0, 1], [1, -1], [1, 0], [1, 1]];
+		cells[108/2][192/2] = 1;
+		var step = function(rules, board) {
+			var buffer = JSON.parse(JSON.stringify(board));
+			for (var i = 0; i < buffer.length; i++) {
+				for (var j = 0; j < buffer[0].length; j++) {
+					if (buffer[i][j] > 0) {
+						if (rules[buffer[i][j]-1]) {
+							for (var k = 0; k < dirs.length; k++) {
+								if (rules[buffer[i][j]-1][k] > 0) {
+									try {
+										board[i + dirs[k][0]][j + dirs[k][1]] = rules[buffer[i][j]-1][k];
+									} catch {}
+								}
+							}
+						}
+					}
+				}
+			}
+			return board;
+		}
+		var render = function(board) {
+			for (var i = 0; i < board.length; i++) {
+				for (var j = 0; j < board[0].length; j++) {
+					if (board[i][j] > 0) {
+						ctx.fillStyle = "hsl(" + (board[i][j]-1)*69 + ", 100%, 50%)";
+						ctx.fillRect(j*10, i*10, 10, 10);
+					}
+				}
+			}
+		}
+		var fullStep = function() {
+			ctx.clearRect(0, 0, canvas.width, canvas.height)
+			cells = step(rules, cells);
+			if (display) render(cells);
+			if (exp) {
+				var img = canvas.toDataURL("image/png");
+				var a = document.createElement('a');
+				a.href = img;
+				a.download = "frame";
+				document.body.appendChild(a);
+				a.click();
+				document.body.removeChild(a);
+			}
+		}
+		for (var _ = 0; _ < time; _++) setTimeout(fullStep, _*250); //fullStep();
+		return cells;
+	}
+	complexity = 250;
+	var randomRules = function(e) {
+		if (e) complexity = e;
+		var r1 = ~~(complexity);
+		var rules = [];
+		for (var i = 0; i < r1; i++) {
+			var r = Array(9).fill(0);
+			r.forEach(function(i, p, a){a[p] = ~~(Math.random()*complexity*2)});
+			rules.push(r);
+		}
+		return rules;
+	}
+</script>

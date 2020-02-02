@@ -1,0 +1,66 @@
+<body>
+	<canvas id="c"></canvas>
+	<script>
+		canvas = document.getElementById("c");
+		ctx = canvas.getContext("2d");
+		canvas.width = 1920;
+		canvas.height = 1080;
+
+		base = 24;
+		n=[0];
+		for (var j = 0; j < 16; j++) {
+			l = n.length;
+			for (var i = 0; i < l; i++) {
+				n.push((Number(n[i])+1)%base);
+			}
+		}
+		
+		width = 64;
+		w = canvas.width/width;
+		for (var i = 0; i < Math.ceil(canvas.width/w*canvas.height/w); i++) {
+			ctx.fillStyle = "hsl(" + Number(n[i])*50 + ", 100%, 50%)";
+			ctx.fillRect((i*w)%canvas.width, (~~(i*w/canvas.width))*w, w, w);
+			ctx.fillRect((i*w)%canvas.width, (~~(i*w/canvas.width))*w, w, w);
+			ctx.fillRect((i*w)%canvas.width, (~~(i*w/canvas.width))*w, w, w);
+		}
+		ctx.fillStyle = "black";
+		ctx.font = "70px Courier New";
+		ctx.fillText("Width: " + width, 10, 60);
+		
+		/*
+var k = 64
+setInterval(function(){
+	base = Math.round(k%1*10)+2;
+	n=[0];
+	for (var j = 0; j < 16; j++) {
+		l = n.length;
+		for (var i = 0; i < l; i++) {
+			n.push((Number(n[i])+1)%base);
+		}
+	}
+
+	width = Math.floor(k)
+	w = canvas.width/width;
+	for (var i = 0; i < Math.ceil(canvas.width/w*canvas.height/w); i++) {
+		ctx.fillStyle = "hsl(" + Number(n[i])*50 + ", 100%, 50%)";
+		ctx.fillRect((i*w)%canvas.width, (~~(i*w/canvas.width))*w, w, w);
+		ctx.fillRect((i*w)%canvas.width, (~~(i*w/canvas.width))*w, w, w);
+		ctx.fillRect((i*w)%canvas.width, (~~(i*w/canvas.width))*w, w, w);
+	}
+	ctx.fillStyle = "black";
+	ctx.font = "70px Courier New";
+	ctx.fillText("Width: " + width, 10, 60);
+	ctx.fillText("Base: " + base, 10, 120);
+	var img = canvas.toDataURL("image/png");
+	var a = document.createElement('a');
+	a.href = img;
+	a.download = "frame";
+	document.body.appendChild(a);
+	a.click();
+	document.body.removeChild(a);
+	k += 1/10;
+}, 500)
+		
+		*/
+	</script>
+</body>

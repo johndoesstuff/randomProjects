@@ -1,0 +1,93 @@
+<script>
+var pi = "31415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679";
+var temp1 = `<DT><H3 ADD_DATE="1581356829" LAST_MODIFIED="1581356829">`
+var temp2 = `</H3>
+<DL><p>
+`;
+var temp3 = `</DL><p>
+`;
+
+//var arr = {1 : {}, 2 : {}, 3: {1: {}, 2: {}}};
+var e = 0;
+var arr = {};
+var a = arr;
+for (var j = 0; j < pi.length; j++) {
+  for (var i = 0; i < 10; i++) {
+    a[i] = {};
+  }
+  var a = a[Number(pi[e])];
+  e++;
+}
+arr = {"Pi": arr};
+function game() {
+	var ga = {};
+	var g = ga;
+	var cards = [~~(Math.random()*10)+1, ~~(Math.random()*10)+1];
+	var cardsTotal = cards[0] + cards[1];
+	var opp = ~~(Math.random()*6)+15
+	g["You are dealt a " + cards[0] + " and " + cards[1]] = {};
+	g["Out"] = {};
+	g["Out"][("Your opponent had " + opp + ", you " + (["won", "tied", "lost"][Math.sign(opp - cardsTotal)+1]))] = {};
+	g["Take one"] = {};
+	g = g["Take one"];
+	
+	while (cardsTotal <= 21) {
+		var rnd = ~~(Math.random()*10)+1;
+		cards.push(rnd);
+		cardsTotal += rnd;
+		g["You are dealt a " + rnd + (cardsTotal > 21 ? ", you lost" : (", you have " + cardsTotal))] = {};
+		if (cardsTotal <= 21) {
+			g["Out"] = {};
+			g["Out"][("Your opponent had " + opp + ", you " + (["won", "tied", "lost"][Math.sign(opp - cardsTotal)+1]))] = {};
+			g["Take one"] = {};
+			g = g["Take one"];
+		}
+	}
+	
+	return ga;
+}
+arr["Cards"] = {};
+for (var i = 0; i < 10; i++) {
+	arr["Cards"][i] = {}
+	for (var j = 0; j < 10; j++) {
+		arr["Cards"][i][j] = {}
+		for (var k = 0; k < 10; k++) {
+			arr["Cards"][i][j][k] = game();
+		}
+	}
+}
+
+var t = "";
+for (var i = 0; i < Object.entries(arr).length; i++) {
+  t += toBookmark(Object.entries(arr)[i][1], Object.entries(arr)[i][0]);
+}
+console.log(format(t));
+
+//needs formatting
+
+function toBookmark(e, f) {
+  if (typeof e == "object" && Object.keys(e).length > 0) {
+    var t = "";
+    for (var i = 0; i < Object.entries(e).length; i++) {
+      t += toBookmark(Object.entries(e)[i][1], Object.entries(e)[i][0]);
+    }
+    return temp1 + f + temp2 + t + temp3;
+  } else {
+    return temp1 + f + temp2 + temp3;
+  }
+}
+function format(e) {
+  return `<!DOCTYPE NETSCAPE-Bookmark-file-1>
+<!-- This is an automatically generated file.
+     It will be read and overwritten.
+     DO NOT EDIT! -->
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">
+<TITLE>Bookmarks</TITLE>
+<H1>Bookmarks</H1>
+<DL><p>
+    <DT><H3 ADD_DATE="1568036249" LAST_MODIFIED="1581356829" PERSONAL_TOOLBAR_FOLDER="true">Bookmarks bar</H3>
+    <DL><p>
+` + e + `</DL><p>
+</DL><p>`;
+}
+</script>

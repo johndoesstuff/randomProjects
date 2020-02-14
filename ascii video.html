@@ -1,0 +1,78 @@
+<video src="video.mp4" width=500 controls id="v"></video>
+<canvas id="c"></canvas>
+<div id="display"></div>
+<style>
+#display {
+	background: black;
+	font-family: Courier;
+	color: white;
+	font-size: 5px;
+}
+</style>
+<script>
+var canvas = document.getElementById("c");
+var ctx = canvas.getContext("2d");
+var video = document.getElementById("v");
+canvas.width = 500;
+canvas.height = 500;
+var values = ["&nbsp;","`",".","~","_","-","^","\'",",",":","|","!","/","\\","=",";","*","+","&lt;","&gt;","7","(",")","i","l","?","1","\"","r","I","t","j","c","v","z","o","u","J","%","L","3","f","n","C","s","Y","5","2","&amp;","V","4","a","x","y","e","0","T","Z","P","k","U","O","F","9","6","w","$","S","h","G","D","8","X","b","m","g","A","d","R","K","E","H","q","#","@","B","N","Q","W","M"];
+var grayscale = function() {
+	var data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+	var newData = data;
+	data = [...data.data];
+	newData.data = [];
+	for (var i = 0; i < data.length; i+=4) {
+		for (var j = 0; j < 3; j++) newData.data[i+j] = ((data[i]+data[i+1]+data[i+2])/3);
+		newData.data[i+4] = 255;
+	}
+	ctx.putImageData(newData, 0, 0);
+}
+var toAscii = function(newLine, shift) {
+	var shiftX = shift;
+	var shiftY = shiftX*2;
+	grayscale();
+	var data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+	var newData = [];
+	for (var i = 0; i < data.length; i+=4) {
+		newData.push(data[i]);
+	}
+	var stuff = [];
+	for (var i = 0; i < canvas.height; i++) {
+		stuff[i] = [];
+		for (var j = 0; j < canvas.width; j++) {
+			stuff[i][j] = newData[i*canvas.width + j];
+		}
+	}
+	var ascii = '';
+	for (var i = 0; i < stuff.length; i+=shiftY) {
+		for (var j = 0; j < stuff[0].length; j+=shiftX) {
+			ascii += values[Math.round(stuff[i][j]*(89/255))];
+		}
+		ascii += newLine;
+	}
+	return ascii;
+}
+function display() {
+	document.getElementById("display").innerText = toAscii("\n", 5)
+}
+var exp = [];
+function exportVideo(video) {
+	exp = [];
+	function e() {
+		ctx.drawImage(video, 0, 0, canvas.width, canvas.height
+		*(9/16));
+		video.currentTime += 1/30;
+		exp.push(toAscii("<br>", 1));
+		if (video.currentTime < video.duration) setTimeout(e, 200)
+	}
+	e();
+	return exp;
+}
+function play() {
+	var playH = 0;
+	setInterval(function(){
+		document.getElementById("display").innerHTML = exp[playH%exp.length];
+		playH++;
+	}, 1000/30)
+}
+</script>

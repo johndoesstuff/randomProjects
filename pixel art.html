@@ -1,0 +1,37 @@
+<img id="i" src="mario.png">
+<canvas id="c"></canvas>
+<script>
+var img = document.getElementById("i");
+var canvas = document.getElementById("c");
+var ctx = canvas.getContext("2d");
+var code = "";
+img.onload = function() {
+	ctx.imageSmoothingEnabled = false;
+	canvas.width = img.width;
+	canvas.height = img.height;
+	ctx.drawImage(img, 0, 0);
+	var data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+	for (var i = 0; i < data.length; i+=4) {
+		var c = [canvas.height-(~~(i/(canvas.width*4)))-1, (i%(canvas.width*4))/4];
+		if (data[i+3]) {
+			code += "Calc.setExpression({ id: '" + i + "', latex: 'x<" + (c[1]+1) + "\\\\left\\\\{" + (c[1]) + "<x<" + (c[1]+1) + "\\\\right\\\\}\\\\left\\\\{" + (c[0]) + "<y<" + (c[0]+1) + "\\\\right\\\\}', color:'" + "rgb(" + data[i] + "," + data[i+1] + "," + data[i+2] + ")" + "'});";
+			code += "Calc.setExpression({ id: '" + (i+1) + "', latex: 'x<" + (c[1]+1) + "\\\\left\\\\{" + (c[1]) + "<x<" + (c[1]+1) + "\\\\right\\\\}\\\\left\\\\{" + (c[0]) + "<y<" + (c[0]+1) + "\\\\right\\\\}', color:'" + "rgb(" + data[i] + "," + data[i+1] + "," + data[i+2] + ")" + "'});";
+			code += "Calc.setExpression({ id: '" + (i+2) + "', latex: 'x<" + (c[1]+1) + "\\\\left\\\\{" + (c[1]) + "<x<" + (c[1]+1) + "\\\\right\\\\}\\\\left\\\\{" + (c[0]) + "<y<" + (c[0]+1) + "\\\\right\\\\}', color:'" + "rgb(" + data[i] + "," + data[i+1] + "," + data[i+2] + ")" + "'});";
+			code += "Calc.setExpression({ id: '" + (i+3) + "', latex: 'x<" + (c[1]+1) + "\\\\left\\\\{" + (c[1]) + "<x<" + (c[1]+1) + "\\\\right\\\\}\\\\left\\\\{" + (c[0]) + "<y<" + (c[0]+1) + "\\\\right\\\\}', color:'" + "rgb(" + data[i] + "," + data[i+1] + "," + data[i+2] + ")" + "'});";
+		}
+	}
+}
+/*var colors = [[199, 68, 64], [45, 112, 179], [55, 139, 70], [249, 125, 25], [96, 66, 166], [0, 0, 0]];
+var getColorChain = function() {
+	var args = [...arguments];
+	var sum = [0, 0, 0];
+	for (var i = 0; i < args.length; i++) {
+		for (var j = 0; j < 3; j++) {
+			sum[j]*=3/5;
+			sum[j]+=2*(255-colors[args[i]][j])/5
+		}
+	}
+	for (var i = 0; i < 3; i++) sum[i] = Math.floor(255-sum[i]);
+	return sum;
+}*/
+</script>

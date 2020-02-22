@@ -1,0 +1,416 @@
+<script>
+//delaunay lib: https://github.com/darkskyapp/delaunay-fast
+var Delaunay;
+
+(function() {
+  "use strict";
+
+  var EPSILON = 1.0 / 1048576.0;
+
+  function supertriangle(vertices) {
+    var xmin = Number.POSITIVE_INFINITY,
+        ymin = Number.POSITIVE_INFINITY,
+        xmax = Number.NEGATIVE_INFINITY,
+        ymax = Number.NEGATIVE_INFINITY,
+        i, dx, dy, dmax, xmid, ymid;
+
+    for(i = vertices.length; i--; ) {
+      if(vertices[i][0] < xmin) xmin = vertices[i][0];
+      if(vertices[i][0] > xmax) xmax = vertices[i][0];
+      if(vertices[i][1] < ymin) ymin = vertices[i][1];
+      if(vertices[i][1] > ymax) ymax = vertices[i][1];
+    }
+
+    dx = xmax - xmin;
+    dy = ymax - ymin;
+    dmax = Math.max(dx, dy);
+    xmid = xmin + dx * 0.5;
+    ymid = ymin + dy * 0.5;
+
+    return [
+      [xmid - 20 * dmax, ymid -      dmax],
+      [xmid            , ymid + 20 * dmax],
+      [xmid + 20 * dmax, ymid -      dmax]
+    ];
+  }
+
+  function circumcircle(vertices, i, j, k) {
+    var x1 = vertices[i][0],
+        y1 = vertices[i][1],
+        x2 = vertices[j][0],
+        y2 = vertices[j][1],
+        x3 = vertices[k][0],
+        y3 = vertices[k][1],
+        fabsy1y2 = Math.abs(y1 - y2),
+        fabsy2y3 = Math.abs(y2 - y3),
+        xc, yc, m1, m2, mx1, mx2, my1, my2, dx, dy;
+
+    /* Check for coincident points */
+    if(fabsy1y2 < EPSILON && fabsy2y3 < EPSILON)
+      throw new Error("Eek! Coincident points!");
+
+    if(fabsy1y2 < EPSILON) {
+      m2  = -((x3 - x2) / (y3 - y2));
+      mx2 = (x2 + x3) / 2.0;
+      my2 = (y2 + y3) / 2.0;
+      xc  = (x2 + x1) / 2.0;
+      yc  = m2 * (xc - mx2) + my2;
+    }
+
+    else if(fabsy2y3 < EPSILON) {
+      m1  = -((x2 - x1) / (y2 - y1));
+      mx1 = (x1 + x2) / 2.0;
+      my1 = (y1 + y2) / 2.0;
+      xc  = (x3 + x2) / 2.0;
+      yc  = m1 * (xc - mx1) + my1;
+    }
+
+    else {
+      m1  = -((x2 - x1) / (y2 - y1));
+      m2  = -((x3 - x2) / (y3 - y2));
+      mx1 = (x1 + x2) / 2.0;
+      mx2 = (x2 + x3) / 2.0;
+      my1 = (y1 + y2) / 2.0;
+      my2 = (y2 + y3) / 2.0;
+      xc  = (m1 * mx1 - m2 * mx2 + my2 - my1) / (m1 - m2);
+      yc  = (fabsy1y2 > fabsy2y3) ?
+        m1 * (xc - mx1) + my1 :
+        m2 * (xc - mx2) + my2;
+    }
+
+    dx = x2 - xc;
+    dy = y2 - yc;
+    return {i: i, j: j, k: k, x: xc, y: yc, r: dx * dx + dy * dy};
+  }
+
+  function dedup(edges) {
+    var i, j, a, b, m, n;
+
+    for(j = edges.length; j; ) {
+      b = edges[--j];
+      a = edges[--j];
+
+      for(i = j; i; ) {
+        n = edges[--i];
+        m = edges[--i];
+
+        if((a === m && b === n) || (a === n && b === m)) {
+          edges.splice(j, 2);
+          edges.splice(i, 2);
+          break;
+        }
+      }
+    }
+  }
+
+  Delaunay = {
+    triangulate: function(vertices, key) {
+      var n = vertices.length,
+          i, j, indices, st, open, closed, edges, dx, dy, a, b, c;
+
+      /* Bail if there aren't enough vertices to form any triangles. */
+      if(n < 3)
+        return [];
+
+      /* Slice out the actual vertices from the passed objects. (Duplicate the
+       * array even if we don't, though, since we need to make a supertriangle
+       * later on!) */
+      vertices = vertices.slice(0);
+
+      if(key)
+        for(i = n; i--; )
+          vertices[i] = vertices[i][key];
+
+      /* Make an array of indices into the vertex array, sorted by the
+       * vertices' x-position. Force stable sorting by comparing indices if
+       * the x-positions are equal. */
+      indices = new Array(n);
+
+      for(i = n; i--; )
+        indices[i] = i;
+
+      indices.sort(function(i, j) {
+        var diff = vertices[j][0] - vertices[i][0];
+        return diff !== 0 ? diff : i - j;
+      });
+
+      /* Next, find the vertices of the supertriangle (which contains all other
+       * triangles), and append them onto the end of a (copy of) the vertex
+       * array. */
+      st = supertriangle(vertices);
+      vertices.push(st[0], st[1], st[2]);
+      
+      /* Initialize the open list (containing the supertriangle and nothing
+       * else) and the closed list (which is empty since we havn't processed
+       * any triangles yet). */
+      open   = [circumcircle(vertices, n + 0, n + 1, n + 2)];
+      closed = [];
+      edges  = [];
+
+      /* Incrementally add each vertex to the mesh. */
+      for(i = indices.length; i--; edges.length = 0) {
+        c = indices[i];
+
+        /* For each open triangle, check to see if the current point is
+         * inside it's circumcircle. If it is, remove the triangle and add
+         * it's edges to an edge list. */
+        for(j = open.length; j--; ) {
+          /* If this point is to the right of this triangle's circumcircle,
+           * then this triangle should never get checked again. Remove it
+           * from the open list, add it to the closed list, and skip. */
+          dx = vertices[c][0] - open[j].x;
+          if(dx > 0.0 && dx * dx > open[j].r) {
+            closed.push(open[j]);
+            open.splice(j, 1);
+            continue;
+          }
+
+          /* If we're outside the circumcircle, skip this triangle. */
+          dy = vertices[c][1] - open[j].y;
+          if(dx * dx + dy * dy - open[j].r > EPSILON)
+            continue;
+
+          /* Remove the triangle and add it's edges to the edge list. */
+          edges.push(
+            open[j].i, open[j].j,
+            open[j].j, open[j].k,
+            open[j].k, open[j].i
+          );
+          open.splice(j, 1);
+        }
+
+        /* Remove any doubled edges. */
+        dedup(edges);
+
+        /* Add a new triangle for each edge. */
+        for(j = edges.length; j; ) {
+          b = edges[--j];
+          a = edges[--j];
+          open.push(circumcircle(vertices, a, b, c));
+        }
+      }
+
+      /* Copy any remaining open triangles to the closed list, and then
+       * remove any triangles that share a vertex with the supertriangle,
+       * building a list of triplets that represent triangles. */
+      for(i = open.length; i--; )
+        closed.push(open[i]);
+      open.length = 0;
+
+      for(i = closed.length; i--; )
+        if(closed[i].i < n && closed[i].j < n && closed[i].k < n)
+          open.push(closed[i].i, closed[i].j, closed[i].k);
+
+      /* Yay, we're done! */
+      return open;
+    },
+    contains: function(tri, p) {
+      /* Bounding box test first, for quick rejections. */
+      if((p[0] < tri[0][0] && p[0] < tri[1][0] && p[0] < tri[2][0]) ||
+         (p[0] > tri[0][0] && p[0] > tri[1][0] && p[0] > tri[2][0]) ||
+         (p[1] < tri[0][1] && p[1] < tri[1][1] && p[1] < tri[2][1]) ||
+         (p[1] > tri[0][1] && p[1] > tri[1][1] && p[1] > tri[2][1]))
+        return null;
+
+      var a = tri[1][0] - tri[0][0],
+          b = tri[2][0] - tri[0][0],
+          c = tri[1][1] - tri[0][1],
+          d = tri[2][1] - tri[0][1],
+          i = a * d - b * c;
+
+      /* Degenerate tri. */
+      if(i === 0.0)
+        return null;
+
+      var u = (d * (p[0] - tri[0][0]) - b * (p[1] - tri[0][1])) / i,
+          v = (a * (p[1] - tri[0][1]) - c * (p[0] - tri[0][0])) / i;
+
+      /* If we're outside the tri, fail. */
+      if(u < 0.0 || v < 0.0 || (u + v) > 1.0)
+        return null;
+
+      return [u, v];
+    }
+  };
+
+  if(typeof module !== "undefined")
+    module.exports = Delaunay;
+})();
+</script>
+<div>Original Image</div>
+<img src="image.jpg" id="i" style="width: 40%">
+<div>Canvas Image</div>
+<canvas id="c1"></canvas>
+<div>Difference Map</div>
+<canvas id="c2"></canvas>
+<div>Dot Placement</div>
+<canvas id="c3"></canvas>
+<div>Triangulation</div>
+<canvas id="c4"></canvas>
+<div>Color Average</div>
+<canvas id="c5"></canvas>
+<div>Final</div>
+<canvas id="c6"></canvas>
+<script>
+var image = document.getElementById("i");
+image.onload = function(){
+	var width = 480;
+	var height = image.height/image.width*480;
+	var upscaleFactor = 4;
+	var canvas1 = document.getElementById("c1");
+	var ctx1 = canvas1.getContext("2d");
+	canvas1.width = width;
+	canvas1.height = height;
+	var canvas2 = document.getElementById("c2");
+	var ctx2 = canvas2.getContext("2d");
+	canvas2.width = width;
+	canvas2.height = height;
+	var canvas3 = document.getElementById("c3");
+	var ctx3 = canvas3.getContext("2d");
+	canvas3.width = width;
+	canvas3.height = height;
+	var canvas4 = document.getElementById("c4");
+	var ctx4 = canvas4.getContext("2d");
+	canvas4.width = width;
+	canvas4.height = height;
+	var canvas5 = document.getElementById("c5");
+	var ctx5 = canvas5.getContext("2d");
+	canvas5.width = width;
+	canvas5.height = height;
+	var canvas6 = document.getElementById("c6");
+	var ctx6 = canvas6.getContext("2d");
+	canvas6.width = upscaleFactor*width;
+	canvas6.height = upscaleFactor*height;
+	ctx1.drawImage(image, 0, 0, canvas1.width, canvas1.height);
+	ctx2.drawImage(image, 0, 0, canvas1.width, canvas1.height);
+	var diff = [];
+	var data = ctx2.getImageData(0, 0, canvas2.width, canvas2.height);
+	for (var i = 0; i < data.data.length; i+=4) {
+		var max = 0;
+		var sum = function(e) {
+			if (e == undefined) e = [];
+			var s = 0;
+			for (var i = 0; i < e.length; i++) s+=e[i];
+			return s;
+		}
+		var a = Math.abs
+		var e = data.data[i]+data.data[i+1]+data.data[i+2];
+		e -= data.data[i+4]+data.data[i+5]+data.data[i+6];
+		e = a(e);
+		if (e > max) max = e;
+		var e = data.data[i]+data.data[i+1]+data.data[i+2];
+		e -= data.data[i-4]+data.data[i-3]+data.data[i-2];
+		e = a(e);
+		if (e > max) max = e;
+		var e = data.data[i]+data.data[i+1]+data.data[i+2];
+		e -= data.data[i+canvas2.width*4]+data.data[i+canvas2.width*4+1]+data.data[i+canvas2.width*4+2];
+		e = a(e);
+		if (e > max) max = e;
+		var e = data.data[i]+data.data[i+1]+data.data[i+2];
+		e -= data.data[i-canvas2.width*4]+data.data[i-canvas2.width*4+1]+data.data[i-canvas2.width*4+2];
+		e = a(e);
+		if (e > max) max = e;
+		
+		diff.push(max);
+		diff.push(max);
+		diff.push(max);
+		diff.push(255);
+	}
+	for (var i = 0; i < diff.length; i++) data.data[i] = diff[i];
+	ctx2.putImageData(data, 0, 0);
+	ctx3.putImageData(ctx2.getImageData(0, 0, canvas2.width, canvas2.height), 0, 0);
+	var data = ctx3.getImageData(0, 0, canvas3.width, canvas3.height);
+	var chance = function(e){return Math.random()<=e};
+	var points = [];
+	var distanceToClosestPoint = function(x, y, points) {
+		var minDist = 9999;
+		for (var i = 0; i < points.length; i++) {
+			var d = Math.sqrt((points[i][0]-x)**2+(points[i][1]-y)**2);
+			if (d < minDist) minDist = d;
+		}
+		return minDist;
+	}
+	for (var i = 0; i < data.data.length; i+=4) {
+		if (chance(-0.0015+data.data[i]/2000) && (distanceToClosestPoint((i/4)%canvas3.width, ~~(i/4/canvas3.width), points) > 3)) {
+			points.push([(i/4)%canvas3.width, ~~(i/4/canvas3.width)]);
+		}
+	}
+	for (var i = 0; i < points.length; i++) {
+		ctx3.fillStyle = "red";
+		ctx3.fillRect(points[i][0]-1, points[i][1]-1, 2, 2);
+	}
+	for (var i = 0; i-30 < canvas1.width; i+=30) {
+		points.push([i, 0]);
+		points.push([i, canvas1.height]);
+	}
+	for (var i = 0; i-30 < canvas1.height; i+=30) {
+		points.push([0, i]);
+		points.push([canvas1.width, i]);
+	}
+	for (var i = 0; i < points.length; i++) {
+		ctx3.fillStyle = "yellow";
+		if (points[i][0] == 0 || points[i][0] == canvas1.width || points[i][1] == 0 || points[i][1] == canvas1.height) ctx3.fillRect(points[i][0]-1, points[i][1]-1, 2, 2);
+	}
+	//ctx4.putImageData(ctx2.getImageData(0, 0, canvas3.width, canvas3.height), 0, 0);
+	var triangles = Delaunay.triangulate(points);
+	for(i = 0; i < triangles.length; i += 3) {
+		ctx4.beginPath();
+		ctx4.strokeStyle = "green";
+		ctx4.lineWidth = 1;
+		ctx4.moveTo(points[triangles[i]][0], points[triangles[i]][1]);
+		ctx4.lineTo(points[triangles[i+1]][0], points[triangles[i+1]][1]);
+		ctx4.lineTo(points[triangles[i+2]][0], points[triangles[i+2]][1]);
+		ctx4.closePath();
+		ctx4.stroke();
+	}
+	var triangles = Delaunay.triangulate(points);
+	
+	function ptInTriangle(p, p0, p1, p2) { //kudos @Andreas Brinck & @urraka
+		var A = 1/2 * (-p1.y * p2.x + p0.y * (-p1.x + p2.x) + p0.x * (p1.y - p2.y) + p1.x * p2.y);
+		var sign = A < 0 ? -1 : 1;
+		var s = (p0.y * p2.x - p0.x * p2.y + (p2.y - p0.y) * p.x + (p0.x - p2.x) * p.y) * sign;
+		var t = (p0.x * p1.y - p0.y * p1.x + (p0.y - p1.y) * p.x + (p1.x - p0.x) * p.y) * sign;
+		
+		return s > 0 && t > 0 && (s + t) < 2 * A * sign;
+	}
+	
+	var colorAverage = function(p0, p1, p2, data) {
+		var inTri = [];
+		for (var i = (4*canvas1.width*Math.min(p0.y, p1.y, p2.y)); i < 4*canvas1.width*Math.max(p0.y, p1.y, p2.y); i+=4) {
+			if (ptInTriangle({x: (i/4)%canvas1.width, y: ~~(i/4/canvas1.width)}, p0, p1, p2)) {
+				inTri.push([data.data[i], data.data[i+1], data.data[i+2]]);
+			}
+		}
+		var sumRGB = [0, 0, 0]
+		for (var i = 0; i < inTri.length; i++) {
+			sumRGB[0] += inTri[i][0];
+			sumRGB[1] += inTri[i][1];
+			sumRGB[2] += inTri[i][2];
+		}
+		var average = [sumRGB[0]/inTri.length, sumRGB[1]/inTri.length, sumRGB[2]/inTri.length];
+		return "rgb(" + average.join(",") + ")";
+	}
+	
+	var data = ctx1.getImageData(0, 0, canvas1.width, canvas1.height);
+	for(i = 0; i < triangles.length; i += 3) {
+		ctx5.beginPath();
+		ctx5.fillStyle = colorAverage({x: points[triangles[i]][0], y: points[triangles[i]][1]}, {x: points[triangles[i+1]][0], y: points[triangles[i+1]][1]}, {x: points[triangles[i+2]][0], y: points[triangles[i+2]][1]}, data);
+		ctx5.moveTo(points[triangles[i]][0], points[triangles[i]][1]);
+		ctx5.lineTo(points[triangles[i+1]][0], points[triangles[i+1]][1]);
+		ctx5.lineTo(points[triangles[i+2]][0], points[triangles[i+2]][1]);
+		ctx5.closePath();
+		for (var k = 0; k < 5; k++) ctx5.fill();		
+	}
+	
+	ctx6.drawImage(image, 0, 0, canvas6.width, canvas6.height);
+	for(i = 0; i < triangles.length; i += 3) {
+		ctx6.beginPath();
+		ctx6.fillStyle = colorAverage({x: points[triangles[i]][0], y: points[triangles[i]][1]}, {x: points[triangles[i+1]][0], y: points[triangles[i+1]][1]}, {x: points[triangles[i+2]][0], y: points[triangles[i+2]][1]}, data);
+		ctx6.moveTo(upscaleFactor*points[triangles[i]][0], upscaleFactor*points[triangles[i]][1]);
+		ctx6.lineTo(upscaleFactor*points[triangles[i+1]][0], upscaleFactor*points[triangles[i+1]][1]);
+		ctx6.lineTo(upscaleFactor*points[triangles[i+2]][0], upscaleFactor*points[triangles[i+2]][1]);
+		ctx6.closePath();
+		for (var k = 0; k < 2; k++) ctx6.fill();		
+	}
+}
+</script>

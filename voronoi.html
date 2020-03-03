@@ -1,0 +1,76 @@
+<canvas id="c"></canvas>
+<script>
+var canvas = document.getElementById("c");
+var ctx = canvas.getContext("2d");
+canvas.width = 500;
+canvas.height = 500;
+var points = [];
+var globalP = 1;
+for (var i = 0; i < 50; i++) {
+	points.push({
+		x: Math.random()*canvas.width,
+		y: Math.random()*canvas.height,
+		xvel: Math.random()-0.5,
+		yvel: Math.random()-0.5,
+		color: [Math.random()*255, Math.random()*255, Math.random()*255],
+	});
+}
+var distance = function(x0, y0, x1, y1, p) {
+	var x = Math.abs(x0-x1);
+	var y = Math.abs(y0-y1);
+	//return Math.sqrt(x**2+y**2); //euclidean distance
+	//return Math.abs(x)+Math.abs(y); //manhatten distance
+	//return (Math.sqrt(Math.abs(x)) + Math.sqrt(Math.abs(y)))**2; //inverted distance (p = 2^-1)
+	return Math.sqrt(Math.abs(x)**p + Math.abs(y)**p)**(1/p); //minkowski distance
+}
+var render = function(p) {
+	var data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+	for (var y = 0; y < canvas.height; y++) {
+		for (var x = 0; x < canvas.width; x++) {
+			var lowest = Infinity;
+			var index = -1;
+			for (var i = 0; i < points.length; i++) {
+				if (distance(x, y, points[i].x, points[i].y, p) < lowest) {
+					lowest = distance(x, y, points[i].x, points[i].y, p);
+					index = i;
+				}
+			}
+			//ctx.fillStyle = "rgb(" + points[index].color.join(",") + ")";
+			//ctx.fillRect(x, y, 1, 1);
+			data.data[y*canvas.width*4+x*4] = points[index].color[0];
+			data.data[y*canvas.width*4+x*4+1] = points[index].color[1];
+			data.data[y*canvas.width*4+x*4+2] = points[index].color[2];
+			data.data[y*canvas.width*4+x*4+3] = 255;
+		}
+	}
+	ctx.putImageData(data, 0, 0);
+	/*for (var i = 0; i < points.length; i++) {
+		ctx.fillStyle = "black";
+		ctx.fillRect(points[i].x-1, points[i].y-1, 2, 2);
+	}*/
+}
+var exportFrame = function() {
+	render(globalP);
+	ctx.font = ("40px Comic Sans MS");
+	ctx.fillStyle = "black";
+	ctx.fillText("p: " + Math.floor(globalP*1000)/1000, 25+5, 60+5);
+	ctx.fillStyle = "white";
+	ctx.fillText("p: " + Math.floor(globalP*1000)/1000, 25, 60);
+	var link = document.createElement('a');
+	link.setAttribute('download', 'frame.png');
+	link.setAttribute('href', canvas.toDataURL("image/png").replace("image/png", "image/octet-stream"));
+	link.click();
+	globalP += 0.001;
+	for (var i = 0; i < points.length; i++) {
+		points[i].x += points[i].xvel/2;
+		points[i].y += points[i].yvel/2;
+		if (points[i].x < 0 || points[i].x > canvas.width) points[i].xvel *= -1;
+		if (points[i].y < 0 || points[i].y > canvas.height) points[i].yvel *= -1;
+	}
+	link.setAttribute('download', 'info.txt');
+	link.setAttribute('href', "data:text/plain," + escape(JSON.stringify(points)));
+	link.click();
+}
+//setInterval(exportFrame, false);
+render(globalP);
+</script>

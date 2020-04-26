@@ -1,0 +1,94 @@
+<canvas id="c"></canvas>
+<script>
+var canvas = document.getElementById("c");
+var ctx = canvas.getContext("2d");
+var image = {
+	width: 1920,
+	height: 1080,
+};
+canvas.width = image.width;
+canvas.height = image.height;
+function cut(arr, r, rx, ry) {
+	for (var y = 0; y < canvas.height; y++) {
+		for (var x = 0; x < canvas.width; x++) {
+			if (Math.sign(r-3*Math.PI/2)*Math.sign(r-Math.PI/2)*(y-ry)>Math.sign(r-3*Math.PI/2)*Math.sign(r-Math.PI/2)*Math.tan(r)*(x-rx)) arr[y][x] = !arr[y][x];
+		}
+	}
+	return arr;
+}
+function circle(arr, r, rx, ry) {
+	for (var y = 0; y < canvas.height; y++) {
+		for (var x = 0; x < canvas.width; x++) {
+			if ((x-rx)**2+(y-ry)**2 < r**2) arr[y][x] = !arr[y][x];
+		}
+	}
+	return arr;
+}
+function render(objects) {
+	var arr = JSON.parse(JSON.stringify(Array(canvas.height).fill(Array(canvas.width).fill(0))));
+	ctx.clearRect(0, 0, canvas.width, canvas.height);
+	ctx.fillStyle = "black";
+	for (var i = 0; i < objects.length; i++) {
+		if (objects[i].type == "circle") {
+			arr = circle(arr, objects[i].r, objects[i].rx, objects[i].ry);
+		} else if (objects[i].type = "cut") {
+			arr = cut(arr, objects[i].r, objects[i].rx, objects[i].ry);
+		}
+	}
+	for (var y = 0; y < canvas.height; y++) {
+		for (var x = 0; x < canvas.width; x++) {
+			if (arr[y][x]) ctx.fillRect(x, y, 1, 1);
+		}
+	}
+}
+var objects = [];
+for (var i = 0; i < 75; i++) {
+	objects.push({
+		type: "circle",
+		r: Math.random()*100,
+		rx: Math.random()*canvas.width,
+		ry: Math.random()*canvas.height,
+		tOff: Math.random()*Math.PI*2,
+		tx: 2*Math.random()-1,
+		ty: 2*Math.random()-1,
+		trOff: Math.random()*Math.PI*2,
+		tr: Math.random(),
+	});
+}
+for (var i = 0; i < 25; i++) {
+	objects.push({
+		type: "cut",
+		r: Math.random()*2*Math.PI,
+		rx: Math.random()*canvas.width,
+		ry: Math.random()*canvas.height,
+		tOff: Math.random()*Math.PI*2,
+		tx: 2*Math.random()-1,
+		ty: 2*Math.random()-1,
+		trOff: Math.random()*Math.PI*2,
+		tr: Math.random(),
+	});
+}
+var time = 0;
+var frames = 250;
+function frame() {
+	modObjects = JSON.parse(JSON.stringify(objects));
+	for (var i = 0; i < objects.length; i++) {
+		modObjects[i].rx += 50*modObjects[i].tx*Math.cos(time*2*Math.PI/frames+modObjects[i].tOff);
+		modObjects[i].ry += 50*modObjects[i].ty*Math.cos(time*2*Math.PI/frames+modObjects[i].tOff);
+		if (modObjects[i].type == "circle") modObjects[i].r += modObjects[i].r*modObjects[i].tr*Math.cos(time*2*Math.PI/frames+modObjects[i].trOff);
+		if (modObjects[i].type == "cut") modObjects[i].r += 0.3*modObjects[i].tr*Math.cos(time*2*Math.PI/frames+modObjects[i].trOff);
+	}
+	render(modObjects);
+	var a=document.createElement("a");
+	a.href=canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
+	a.download="Frame.png";
+	a.click();
+	time++;
+}
+function exp() {
+	var interv = setInterval(function(){
+		frame();
+		if (time > frames) {clearInterval(interv)}
+	}, false);
+}
+</script>

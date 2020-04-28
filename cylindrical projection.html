@@ -1,0 +1,30 @@
+<video id="v" src="comp.mp4" controls></video>
+<canvas id="c"></canvas>
+<canvas id="c2"></canvas>
+<script>
+setTimeout(function() {
+console.log("hi")
+file = {
+	fps: 30,
+	height: 1080,
+	width: 1920,
+}
+var video = document.getElementById("v");
+var canvas = document.getElementById("c");
+canvas.height = file.height;
+canvas.width = file.width;
+ctx = canvas.getContext("2d");
+var canvas2 = document.getElementById("c2");
+canvas2.width = video.duration*file.fps;
+canvas2.height = file.height;
+ctx2 = canvas2.getContext("2d");
+frame = function() {
+	ctx.drawImage(video, 0, 0);
+	ctx2.putImageData(ctx.getImageData(file.width/2, 0, 1, file.height), video.currentTime*file.fps, 0);
+	video.currentTime += 1/file.fps;
+	if (video.currentTime == video.duration) clearInterval(int);
+}
+var int = setInterval(frame, 250);
+
+}, 500);
+</script>

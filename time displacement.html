@@ -1,0 +1,77 @@
+<img src="image.jpg" id="i">
+<img src="obama.jpg" id="map">
+<canvas id="c"></canvas>
+<canvas id="c2"></canvas>
+<canvas id="cmap"></canvas>
+<script>
+var expo = false;
+document.getElementById("map").onload = function() {
+	console.log("hi");
+	canvas = document.getElementById("c");
+	canvas2 = document.getElementById("c2");
+	canvasmap = document.getElementById("cmap");
+	map = document.getElementById("map");
+	img = document.getElementById("i");
+	ctx = canvas.getContext("2d");
+	ctx2 = canvas2.getContext("2d");
+	ctxmap = canvasmap.getContext("2d");
+	canvas.width = img.width;
+	canvas2.width = img.width;
+	canvasmap.width = img.width;
+	canvas.height = img.height;
+	canvas2.height = img.height;
+	canvasmap.height = img.height;
+	img.transformMatrix = {
+		hscale: 1,
+		hskew: 0,
+		vskew: 0,
+		vscale: 1,
+		hmove: 0,
+		vmove: 0,
+	};
+	img.transform = {
+		rotation: 0,
+	}
+	ctxmap.drawImage(map, 0, 0);
+	framenum = -1;
+}
+var rot = -1;
+function transform() {
+	//img.transform.rotation += rot;
+	//img.transformMatrix.hscale += 0.05;
+	//img.transform.rotation -= 90/768;
+	//img.transformMatrix.vskew = Math.sin(framenum/2)/2;
+	//ctx.filter = 'blur(' + (0.2*framenum) + 'px)'
+	ctx.filter = 'hue-rotate('+(framenum)+'deg)';
+	renderImage();
+}
+function renderImage() {
+	ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.save();
+	ctx.setTransform(img.transformMatrix.hscale, img.transformMatrix.hskew, img.transformMatrix.vskew, img.transformMatrix.vscale, img.transformMatrix.hmove + canvas.width/2, img.transformMatrix.vmove + canvas.height/2);
+    ctx.rotate(img.transform.rotation*Math.PI/180);
+    ctx.drawImage(img,-img.width/2,-img.width/2);
+    ctx.restore();
+}
+function frame(slow) {
+	var data = ctxmap.getImageData(0, 0, canvas.width, canvas.height).data;
+	var data2 = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+	for (var i = 0; i < data.length; i+=4) {
+		if (data[i] + data[i+1] + data[i+2] === framenum) {
+			ctx2.fillStyle = "rgb(" + [data2[i],data2[i+1],data2[i+2]].join(",") + ")";
+			ctx2.globalAlpha = data2[i+3]/255;
+			ctx2.fillRect((i/4)%img.width, ~~((i/4)/img.width), 1, 1);
+		}
+	}
+	transform();
+	framenum++;
+	if (expo) {
+		var link = document.createElement('a');
+		link.setAttribute('download', 'Frame.png');
+		link.setAttribute('href', canvas2.toDataURL("image/png").replace("image/png", "image/octet-stream"));
+		link.click();
+	}
+	if (framenum < 768 && !slow) frame();
+	if (framenum < 768 && slow) setTimeout(function(){frame(true)}, 50);
+}
+</script>

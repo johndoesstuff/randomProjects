@@ -1,0 +1,16 @@
+[
+{
+  "modid": "tutorialclient",
+  "name": "IL Capture",
+  "description": "Wow you actually downloaded this, good for you",
+  "version": "${version}",
+  "mcversion": "${mcversion}",
+  "url": "",
+  "updateUrl": "",
+  "authorList": ["JohnDoesStuff"],
+  "credits": "Myself and like 20 tutorial vids, @JohnDoesStuff",
+  "logoFile": "",
+  "screenshots": [],
+  "dependencies": []
+}
+]

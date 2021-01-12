@@ -1,0 +1,125 @@
+<script src="https://www.unpkg.com/brain.js"></script>
+<script src="trainingSet/loc.js"></script>
+<script>
+var trainingLocation = Object.fromEntries(Object.keys(Array(10).fill(0)).map(e => [e, loc.split("\n").filter(k => k[0] == e)])); //cleanest line of code ever written
+var training = Object.fromEntries(Object.keys(Array(10).fill(0)).map(e => [e, []]));
+var loaded = 0;
+
+var config = {
+	binaryThresh: 0.5,
+	hiddenLayers: [16, 16],
+	activation: 'sigmoid',
+};
+
+var net = new brain.NeuralNetwork(config);
+
+function generateOutput(k) {
+	return Array(10).fill(0).map((e, i) => ~~(i == k));
+}
+
+function loadImage(path) {
+	var image = new Image();
+	image.width = 28;
+	image.height = 28;
+	image.onload = () => {
+		var canvas = document.createElement("canvas");
+		canvas.width = 28;
+		canvas.height = 28;
+		var ctx = canvas.getContext("2d");
+		ctx.drawImage(image, 0, 0);
+		loaded++;
+		training[path[0]].push(Object.values(ctx.getImageData(0, 0, 28, 28).data).filter((e, i) => i%4 == 0).map(e => e/255));
+	}
+	image.src = "trainingSet/trainingSet/" + path.split("\\").join("/");
+}
+
+for (var i = 0; i < loc.split("\n").length; i++) {
+	loadImage(loc.split("\n")[i]);
+}
+
+function train(iterations) {
+	var a = [];
+	for (var j = 0; j < 42000; j++) {
+		var r = ~~(Math.random()*10);
+		a.push({
+			input: training[r][~~(Math.random()*training[r].length)],
+			output: generateOutput(r),
+		});
+	}
+	net.train(a, {
+		errorThresh: 0.005,
+		log: true,
+		logPeriod: 1,
+		learningRate: 0.1,
+		iterations: iterations,
+	});
+}
+
+function netToDesmos(weights, biases) {
+	var expressions = [];
+	var idIterator = 0;
+	expressions.push({
+		type: "folder",
+		title: "biases",
+		id: "biases",
+		collapsed: true,
+	});
+	for (var i = 1; i < biases.length; i++) {
+		expressions.push({latex: "b_{" + i + "}=\\left[" + biases[i].join() + "]\\right]", folderId: "biases", id: String(idIterator), color: "#000000", type: "expression"});
+		idIterator++;
+	}
+	expressions.push({
+		type: "folder",
+		title: "weights",
+		id: "weights",
+		collapsed: true,
+	});
+	for (var i = 1; i < weights.length; i++) {
+		for (var j = 0; j < weights[i].length; j++) {
+			expressions.push({latex: "w_{" + i + "a" + j + "}=\\left[" + weights[i][j].join() + "]\\right]", folderId: "weights", id: String(idIterator), color: "#000000", type: "expression"});
+			idIterator++;
+		}
+	}
+	expressions.push({
+		type: "expression",
+		latex: "s\\left(x\\right)=\\frac{1}{1+e^{-x}}",
+		id: "sigmoid",
+		color: "#000000",
+	});
+	expressions.push({
+		type: "folder",
+		title: "neurons",
+		id: "neurons",
+		collapsed: true,
+	});
+	for (var i = 1; i < weights.length; i++) {
+		for (var j = 0; j < weights[i].length; j++) {
+			expressions.push({latex: "n_{" + i + "a" + j + "}=s\\left(\\left(\\sum_{n_{" + i + "a" + j + "i}=1}^{\\operatorname{length}\\left(w_{" + i + "a" + j + "}\\right)}n_{" + (i-1) + "}\\left[n_{" + i + "a" + j + "i}\\right]w_{" + i + "a" + j + "}\\left[n_{" + i + "a" + j + "i}\\right]\\right)+b_{" + i + "}\\left[" + (j+1) + "\\right]\\right)", folderId: "neurons", id: String(idIterator), color: "#000000", type: "expression"});
+			idIterator++;
+		}
+	}
+	expressions.push({
+		type: "folder",
+		title: "neurons containers",
+		id: "lists",
+		collapsed: true,
+	});
+	for (var i = 1; i < weights.length; i++) {
+		expressions.push({latex: "n_{" + i + "}=\\left[" + Array(weights[i].length).fill(0).map((e,k) => "n_{" + i + "a" + k + "}").join() + "\\right]", folderId: "lists", id: String(idIterator), color: "#000000", type: "expression"});
+		idIterator++;
+	}
+	expressions.push({
+		type: "folder",
+		title: "input",
+		id: "input",
+		collapsed: true,
+	});
+	expressions.push({latex: "n_{" + 0 + "}=\\left[" + Array(weights[1][0].length).fill("0").join() + "\\right]", folderId: "input", id: String(idIterator), color: "#000000", type: "expression", id: "inputExpression"});
+	idIterator++;
+	return expressions;
+}
+
+function generateInput(arr) {
+	return "n_{" + 0 + "}=\\left[" + arr.join() + "\\right]";
+}
+</script>

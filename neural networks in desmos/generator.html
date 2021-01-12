@@ -1,0 +1,31 @@
+<canvas id="c" style="width:400px;image-rendering:pixelated;"></canvas>
+<script>
+var canvas = document.getElementById("c");
+var ctx = canvas.getContext("2d");
+canvas.width = 28;
+canvas.height = 28;
+ctx.fillRect(0, 0, canvas.width, canvas.height);
+window.mouse = {x:0,y:0,down:false};
+window.onmousemove = (e) => {
+	mouse.x = e.clientX;
+	mouse.y = e.clientY;
+}
+window.onmousedown = () => {
+	mouse.down = true;
+}
+window.onmouseup = () => {
+	mouse.down = false;
+}
+setInterval(() => {
+	if (mouse.down) {
+		ctx.fillStyle = "white";
+		ctx.fillRect(28/400*mouse.x, 28/400*mouse.y, 1.5, 1.5);
+	}
+})
+function generateInput() {
+	return "n_{" + 0 + "}=\\\\left[" + Object.values(ctx.getImageData(0, 0, canvas.width, canvas.height).data.filter((e, i) => i%4==0)).map(e => e/255).join() + "\\\\right]";
+}
+function loadLatex(e) {
+	Calc.setExpression({id: "inputExpression", latex: e});
+}
+</script>

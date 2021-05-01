@@ -1,0 +1,7 @@
+im so sorry you have to deal with this monstrocity
+
+this is why you should organize your code but too late now i guess ¯\_(ツ)_/¯
+
+all the important functions should be in the js files and you can change the src in the html files for different results
+
+i should not be allowed to write code lmao
